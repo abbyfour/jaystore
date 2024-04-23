@@ -1,10 +1,48 @@
-import { ApplicationCommandOptions, CommandInteraction } from "eris";
+import {
+  AttachmentBuilder,
+  CommandInteraction,
+  EmbedBuilder,
+  InteractionResponse,
+  InteractionType,
+  Message,
+  RESTPostAPIChatInputApplicationCommandsJSONBody,
+  SlashCommandBuilder,
+  SlashCommandSubcommandsOnlyBuilder,
+} from "discord.js";
 import { Bot } from "./Bot";
+import theme from "./framework/theme";
+
+type ReplyOptions = {
+  content: string | EmbedBuilder;
+  file?: AttachmentBuilder;
+  ping?: boolean;
+};
+
+export type SlashCommandData =
+  | RESTPostAPIChatInputApplicationCommandsJSONBody
+  | Omit<SlashCommandBuilder, "addSubcommandGroup" | "addSubcommand">
+  | SlashCommandSubcommandsOnlyBuilder;
 
 export abstract class Command {
-  public aliases: string[] = [];
+  private _discordID: string = "";
+  public abstract name: string;
   public description = "";
-  public options: ApplicationCommandOptions[] = [];
+  public options: (slashCommand: SlashCommandBuilder) => SlashCommandData = (
+    s
+  ) => s;
+  public abstract interactionTypes: InteractionType[];
+
+  public get discordID() {
+    return this._discordID;
+  }
+
+  public set discordID(discordID: string) {
+    if (this._discordID) {
+      throw new Error("Cannot set discordID more than once");
+    }
+
+    this._discordID = discordID;
+  }
 
   protected get bot(): Bot {
     return Bot.getInstance();
@@ -12,12 +50,41 @@ export abstract class Command {
 
   abstract run(interaction: CommandInteraction): Promise<void>;
 
-  protected async reply(interaction: CommandInteraction, content: string) {
-    await interaction.createMessage(content);
+  protected async reply(
+    interaction: CommandInteraction,
+    replyOptions: ReplyOptions
+  ): Promise<InteractionResponse>;
+  protected async reply(
+    interaction: CommandInteraction,
+    content: EmbedBuilder
+  ): Promise<Message>;
+  protected async reply(
+    interaction: CommandInteraction,
+    content: string
+  ): Promise<Message>;
+  protected async reply(
+    interaction: CommandInteraction,
+    content: any
+  ): Promise<InteractionResponse | Message> {
+    if (content instanceof EmbedBuilder) {
+      return await interaction.reply({ embeds: [content] });
+    } else if (typeof content === "string") {
+      return await interaction.reply({ content });
+    } else {
+      content.content instanceof EmbedBuilder
+        ? { embeds: [content.content] }
+        : { content: content.content };
+
+      return await interaction.reply({
+        ...content,
+        files: content.file ? [content.file] : undefined,
+        allowedMentions: content.ping ? { repliedUser: true } : { parse: [] },
+      });
+    }
   }
 
-  protected async replyEmbed(interaction: CommandInteraction, content: object) {
-    await interaction.createMessage({ embeds: [content] });
+  public getOption<T>(interaction: CommandInteraction, name: string): T {
+    return interaction.options.get(name)?.value as T;
   }
 
   protected getURL(string: string): string | undefined {
@@ -27,12 +94,11 @@ export abstract class Command {
     return url ? url[0] : undefined;
   }
 
-  protected getOption<T>(
-    interaction: CommandInteraction,
-    name: string
-  ): T | undefined {
-    return (
-      interaction.data.options?.find((option) => option.name === name) as any
-    )?.value as T;
+  protected embed(): EmbedBuilder {
+    return new EmbedBuilder().setColor(theme.primary);
+  }
+
+  protected errorEmbed(): EmbedBuilder {
+    return new EmbedBuilder().setColor(theme.error);
   }
 }

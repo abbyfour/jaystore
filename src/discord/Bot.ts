@@ -1,20 +1,24 @@
-import Eris, { Client, Constants } from "eris";
+import { Client, IntentsBitField } from "discord.js";
 import secrets from "../secrets";
-import { CommandHandler } from "./CommandHandler";
+import { InteractionHandler } from "./InteractionHandler";
 
 export class Bot {
   private static instance: Bot;
 
-  public client: Client = Eris(`Bot ${secrets.token}`, {
+  public client: Client = new Client({
     intents: [
-      Constants.Intents.guilds,
-      Constants.Intents.guildMessages,
-      Constants.Intents.guildMessageReactions,
-      Constants.Intents.directMessages,
-      Constants.Intents.directMessageReactions,
+      IntentsBitField.Flags.Guilds,
+      IntentsBitField.Flags.GuildMessages,
+      IntentsBitField.Flags.GuildMessageReactions,
+      IntentsBitField.Flags.DirectMessages,
+      IntentsBitField.Flags.DirectMessageReactions,
     ],
   });
-  private commandHandler = new CommandHandler();
+  private interactionHandler = new InteractionHandler();
+
+  public get interactions() {
+    return this.interactionHandler.registry;
+  }
 
   private constructor() {}
 
@@ -26,10 +30,10 @@ export class Bot {
   }
 
   async login() {
-    await this.client.connect();
+    await this.client.login(secrets.discord.token);
 
     this.client.on("ready", async () => {
-      await this.commandHandler.initialize();
+      await this.interactionHandler.initialize();
 
       console.log("Commands initiliazed.");
 
@@ -39,7 +43,7 @@ export class Bot {
 
   private listenForCommands() {
     this.client.on("interactionCreate", (interaction) => {
-      this.commandHandler.handle(interaction);
+      this.interactionHandler.handle(interaction);
     });
   }
 }
