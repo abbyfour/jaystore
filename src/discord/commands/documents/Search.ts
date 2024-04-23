@@ -1,38 +1,40 @@
 import {
-  ApplicationCommandOptions,
   CommandInteraction,
-  Constants,
-  TextableChannel,
-} from "eris";
+  InteractionType,
+  SlashCommandBuilder,
+} from "discord.js";
 import { escape } from "sqlstring";
 import { ILike, Raw } from "typeorm";
 import { Link } from "../../../entities/Link";
 import { Command } from "../../Command";
 
 export class Search extends Command {
-  public aliases: string[] = ["search", "find"];
+  public name: string = "search";
   public description: string = "Searches remembered links";
-  public options: ApplicationCommandOptions[] = [
-    {
-      type: Constants.ApplicationCommandOptionTypes.STRING,
-      name: "keywords",
-      description: "Search the title of the link",
-    },
-    {
-      type: Constants.ApplicationCommandOptionTypes.STRING,
-      name: "author",
-      description: "The author of the link",
-    },
-  ];
+  public interactionTypes = [InteractionType.ApplicationCommand];
+  public options = (slashCommand: SlashCommandBuilder) =>
+    slashCommand
+      .addStringOption((option) =>
+        option
+          .setName("keywords")
+          .setDescription("Search the title of the link")
+      )
+      .addStringOption((option) =>
+        option.setName("author").setDescription("The author of the link")
+      );
 
-  async run(interaction: CommandInteraction<TextableChannel>): Promise<void> {
+  async run(interaction: CommandInteraction): Promise<void> {
     const keywords = this.getOption<string>(interaction, "keywords");
     const author = this.getOption<string>(interaction, "author");
 
     if (!keywords && !author) {
-      await this.replyEmbed(interaction, {
-        description: "Please provide either keywords or an author to search",
-      });
+      await this.reply(
+        interaction,
+        this.errorEmbed().setDescription(
+          "Please provide either keywords or an author to search"
+        )
+      );
+
       return;
     }
 
@@ -63,14 +65,15 @@ export class Search extends Command {
 
     const links = await linksQuery.getMany();
 
-    await this.replyEmbed(interaction, {
-      description: `Links found matching ${
+    await this.reply(
+      interaction,
+      this.embed().setDescription(`Links found matching ${
         keywords ? `keywords=${keywords} ` : ""
       }${author ? `author=${author} ` : ""}
       
 ${links
   .map((link) => `**${link.author}**: [${link.title}](${link.url})`)
-  .join(`\n`)}`,
-    });
+  .join(`\n`)}`)
+    );
   }
 }

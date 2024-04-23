@@ -6,3 +6,4 @@ tmp/
 temp/
 
 src/secrets.ts
+docker-compose.dev.yaml

@@ -4,5 +4,5 @@ interface ScrapingScheduleOptions {
 }
 
 export class ScrapingSchedule {
-  constructor(private options: ScrapingScheduleOptions) {}
+  constructor(public options: ScrapingScheduleOptions) {}
 }

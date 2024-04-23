@@ -1,0 +1,12 @@
+services:
+  jaystore:
+    container_name: jaystore
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/usr/src/app
+      - exclude:/usr/src/app/node_modules
+volumes:
+  exclude:
